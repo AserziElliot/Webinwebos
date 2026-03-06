@@ -3,303 +3,289 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebinwebOS v2.0</title>
+    <title>WebinwebOS v3.0 - Crystal</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://unpkg.com/docx@7.1.0/build/index.js"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     
     <style>
         :root {
-            --bg-blur: rgba(15, 23, 42, 0.8);
-            --accent: #38bdf8;
-            --text: #f8fafc;
-            --window-bg: rgba(30, 41, 59, 0.95);
-            --border: rgba(255, 255, 255, 0.1);
+            --glass: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --accent: #00a2ff;
+            --text: #ffffff;
+            --dock-bg: rgba(0, 0, 0, 0.3);
         }
 
-        * { box-sizing: border-box; transition: all 0.2s ease; }
-        body, html { margin: 0; height: 100%; overflow: hidden; font-family: 'Inter', sans-serif; background: #020617; color: var(--text); }
+        * { box-sizing: border-box; font-family: 'Segoe UI', 'San Francisco', sans-serif; }
+        
+        body, html { 
+            margin: 0; height: 100%; overflow: hidden; 
+            background: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop') center/cover;
+        }
 
-        /* --- Wallpaper --- */
+        /* --- Escritorio y Rejilla de Archivos --- */
         #desktop {
             width: 100vw; height: 100vh;
-            background: radial-gradient(circle at center, #1e293b 0%, #020617 100%);
-            position: relative; padding: 20px;
+            padding: 30px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, 100px);
+            grid-template-rows: repeat(auto-fill, 110px);
+            grid-flow: column;
+            gap: 20px;
         }
 
-        /* --- Iconos CSS (Sin Emojis) --- */
-        .icon-svg { width: 30px; height: 30px; fill: var(--accent); }
-        .app-launcher { 
-            width: 60px; height: 60px; display: flex; flex-direction: column; 
-            align-items: center; cursor: pointer; margin-bottom: 20px;
+        /* --- Iconos Minimalistas (Estilo Moderno) --- */
+        .desktop-item {
+            display: flex; flex-direction: column; align-items: center;
+            cursor: pointer; padding: 10px; border-radius: 12px;
+            transition: background 0.3s;
         }
-        .app-launcher:hover { transform: scale(1.1); filter: drop-shadow(0 0 8px var(--accent)); }
-        .app-label { font-size: 10px; margin-top: 5px; text-shadow: 1px 1px 2px black; }
+        .desktop-item:hover { background: rgba(255,255,255,0.15); }
+        
+        .icon-shape {
+            width: 55px; height: 55px;
+            border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.05));
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(5px);
+        }
 
-        /* --- Ventanas Glassmorphism --- */
+        .icon-shape svg { width: 30px; height: 30px; fill: white; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
+        .item-label { color: white; font-size: 12px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); text-align: center; }
+
+        /* --- Ventanas Estilo macOS/Win11 --- */
         .window {
-            position: absolute; width: 700px; height: 450px;
-            background: var(--window-bg); backdrop-filter: blur(12px);
-            border: 1px solid var(--border); border-radius: 12px;
-            display: none; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
-            z-index: 10; overflow: hidden; resize: both;
+            position: absolute; width: 750px; height: 480px;
+            background: rgba(20, 20, 25, 0.85);
+            backdrop-filter: blur(25px);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            display: none; flex-direction: column;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+            z-index: 10; overflow: hidden;
         }
 
         .window-header {
-            padding: 12px; background: rgba(0,0,0,0.2);
-            display: flex; justify-content: space-between; align-items: center;
-            cursor: move; border-bottom: 1px solid var(--border);
+            padding: 15px; display: flex; align-items: center;
+            background: rgba(255,255,255,0.05); cursor: move;
         }
 
-        .controls { display: flex; gap: 8px; }
-        .dot { width: 12px; height: 12px; border-radius: 50%; cursor: pointer; }
-        .dot.red { background: #ff5f56; }
-        .dot.yellow { background: #ffbd2e; }
-        .dot.green { background: #27c93f; }
+        .win-controls { display: flex; gap: 8px; margin-right: 20px; }
+        .circle { width: 12px; height: 12px; border-radius: 50%; }
+        .close { background: #ff5f57; cursor: pointer; }
+        .min { background: #febc2e; }
+        .max { background: #28c840; }
 
-        .window-content { flex: 1; padding: 15px; overflow: auto; }
+        .win-title { font-size: 13px; font-weight: 500; color: #ccc; flex-grow: 1; text-align: center; }
 
-        /* --- Terminal --- */
-        #term-out { font-family: 'Fira Code', monospace; color: #10b981; font-size: 14px; white-space: pre-wrap; }
-        .term-input-line { display: flex; gap: 10px; color: #38bdf8; }
-        #term-in { background: transparent; border: none; color: white; outline: none; flex: 1; font-family: inherit; }
+        .window-content { flex: 1; padding: 20px; overflow: auto; color: white; }
 
-        /* --- Barra de Tareas --- */
-        #taskbar {
+        /* --- Dock (Barra de tareas) --- */
+        #dock-container {
             position: fixed; bottom: 15px; left: 50%; transform: translateX(-50%);
-            height: 60px; padding: 0 20px; background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(20px); border-radius: 20px; border: 1px solid var(--border);
-            display: flex; align-items: center; gap: 15px; z-index: 1000;
+            background: var(--dock-bg); backdrop-filter: blur(15px);
+            padding: 8px 15px; border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            display: flex; gap: 12px; align-items: center; z-index: 1000;
         }
 
-        /* --- Apps --- */
-        #editor-area { width: 100%; height: 80%; background: #0f172a; border: 1px solid var(--border); color: white; padding: 10px; border-radius: 5px; }
-        .btn-group { margin-top: 10px; display: flex; gap: 5px; }
-        button { background: var(--accent); border: none; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        button:hover { opacity: 0.8; }
-        iframe { width: 100%; height: 100%; border-radius: 8px; background: white; }
+        .dock-icon {
+            width: 45px; height: 45px; cursor: pointer;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .dock-icon:hover { transform: translateY(-10px) scale(1.2); }
 
-        /* --- Sistema de Archivos UI --- */
-        .file-grid { display: grid; grid-template-columns: repeat(auto-fill, 80px); gap: 10px; }
-        .file-item { text-align: center; cursor: pointer; padding: 10px; border-radius: 8px; }
-        .file-item:hover { background: rgba(255,255,255,0.1); }
+        /* --- Componentes Internos --- */
+        textarea { width: 100%; height: 85%; background: rgba(0,0,0,0.3); color: white; border: 1px solid var(--glass-border); border-radius: 10px; padding: 15px; outline: none; resize: none; }
+        #term-out { font-family: 'Consolas', monospace; color: #39ff14; }
+        .cmd-line { display: flex; color: var(--accent); gap: 10px; margin-top: 5px; }
+        input[type="text"] { background: transparent; border: none; color: white; outline: none; flex: 1; }
+
+        /* Grid del Explorador */
+        .file-explorer-grid { display: grid; grid-template-columns: repeat(auto-fill, 90px); gap: 15px; }
     </style>
 </head>
 <body>
 
 <div id="desktop">
-    <div class="app-launcher" onclick="openApp('win-files')">
-        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
-        <span class="app-label">Archivos</span>
     </div>
 
-    <div id="win-terminal" class="window">
-        <div class="window-header">
-            <span>WebinwebOS Terminal</span>
-            <div class="controls"><div class="dot red" onclick="closeApp('win-terminal')"></div></div>
-        </div>
-        <div class="window-content" style="background: #000;">
-            <div id="term-out">Bienvenido a WebinwebOS Kernel v2.0.0
-Escribe 'help' para comandos, 'sysinfo' para estado.</div>
-            <div class="term-input-line">
-                <span>user@webinweb:~$</span>
-                <input type="text" id="term-in" autofocus>
-            </div>
-        </div>
+<div id="win-files" class="window">
+    <div class="window-header">
+        <div class="win-controls"><div class="circle close" onclick="closeApp('win-files')"></div><div class="circle min"></div><div class="circle max"></div></div>
+        <div class="win-title">Explorador de Archivos</div>
     </div>
-
-    <div id="win-editor" class="window">
-        <div class="window-header">
-            <span>Escritor de Textos</span>
-            <div class="controls"><div class="dot red" onclick="closeApp('win-editor')"></div></div>
-        </div>
-        <div class="window-content">
-            <textarea id="editor-area" placeholder="Comienza a escribir..."></textarea>
-            <div class="btn-group">
-                <button onclick="saveToVFS()">Guardar en OS</button>
-                <button onclick="exportOS('pdf')">PDF</button>
-                <button onclick="exportOS('docx')">DOCX</button>
-                <button onclick="exportOS('txt')">TXT</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="win-files" class="window">
-        <div class="window-header"><span>Explorador</span><div class="controls"><div class="dot red" onclick="closeApp('win-files')"></div></div></div>
-        <div class="window-content">
-            <div id="file-viewer" class="file-grid"></div>
-        </div>
-    </div>
-
-    <div id="win-chat" class="window">
-        <div class="window-header"><span>Chat Global (Socket.io)</span><div class="controls"><div class="dot red" onclick="closeApp('win-chat')"></div></div></div>
-        <div class="window-content" style="display:flex; flex-direction:column;">
-            <div id="chat-messages" style="flex:1; border:1px solid var(--border); margin-bottom:10px; padding:10px;"></div>
-            <div style="display:flex; gap:5px;">
-                <input type="text" id="chat-in" style="flex:1; background:#1e293b; color:white; border:none; padding:5px;">
-                <button onclick="sendMsg()">Enviar</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="win-browser" class="window" style="width:900px; height:600px;">
-        <div class="window-header"><span>Navegador</span><div class="controls"><div class="dot red" onclick="closeApp('win-browser')"></div></div></div>
-        <div style="padding:10px; background:#1e293b; display:flex; gap:10px;">
-            <input type="text" id="nav-url" value="https://www.bing.com" style="flex:1">
-            <button onclick="goNav()">Navegar</button>
-        </div>
-        <div class="window-content" style="padding:0;"><iframe id="nav-frame" src="https://www.bing.com"></iframe></div>
+    <div class="window-content">
+        <div id="explorer-view" class="file-explorer-grid"></div>
     </div>
 </div>
 
-<div id="taskbar">
-    <div onclick="openApp('win-terminal')" title="Terminal">
-        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-9 12H5v-2h6v2zm9-4H5V8h15v4z"/></svg>
+<div id="win-terminal" class="window">
+    <div class="window-header">
+        <div class="win-controls"><div class="circle close" onclick="closeApp('win-terminal')"></div><div class="circle min"></div><div class="circle max"></div></div>
+        <div class="win-title">Terminal Bash</div>
     </div>
-    <div onclick="openApp('win-editor')" title="Editor">
-        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+    <div class="window-content" style="background: #0c0c0c;">
+        <div id="term-out">WebinwebOS [Version 3.0.0]<br>Type 'help' for commands.</div>
+        <div class="cmd-line"><span>webinweb@local:~$</span><input type="text" id="term-in" autofocus></div>
     </div>
-    <div onclick="openApp('win-browser')" title="Navegador">
-        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+</div>
+
+<div id="win-editor" class="window">
+    <div class="window-header">
+        <div class="win-controls"><div class="circle close" onclick="closeApp('win-editor')"></div><div class="circle min"></div><div class="circle max"></div></div>
+        <div class="win-title">Notas v3</div>
     </div>
-    <div onclick="openApp('win-chat')" title="Chat">
-        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-10H6V4h12v2z"/></svg>
+    <div class="window-content">
+        <textarea id="editor-text" placeholder="Escribe tu historia..."></textarea>
+        <div style="margin-top: 15px; display: flex; gap: 10px;">
+            <button onclick="saveFileVFS()" style="background: var(--accent); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">Guardar en OS</button>
+            <button onclick="exportReal('pdf')" style="background: #444; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">Exportar PDF</button>
+        </div>
+    </div>
+</div>
+
+<div id="dock-container">
+    <div class="dock-icon" onclick="openApp('win-files')">
+        <div class="icon-shape" style="background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);">
+            <svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+        </div>
+    </div>
+    <div class="dock-icon" onclick="openApp('win-terminal')">
+        <div class="icon-shape" style="background: #333;">
+            <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-9 12H5v-2h6v2zm9-4H5V8h15v4z"/></svg>
+        </div>
+    </div>
+    <div class="dock-icon" onclick="openApp('win-editor')">
+        <div class="icon-shape" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+        </div>
     </div>
 </div>
 
 <script>
-    // --- SISTEMA DE ARCHIVOS VIRTUAL (VFS) ---
-    let fs = JSON.parse(localStorage.getItem('webinweb_fs')) || {
-        "home": { type: "dir", content: {} },
-        "root": { type: "dir", content: {} },
-        "sysinfo.txt": { type: "file", content: "WebinwebOS v2.0\nKernel: 2.0.0-vanilla\nUser: Admin" }
+    // --- SISTEMA DE ARCHIVOS (VFS) REPARADO ---
+    let vfs = JSON.parse(localStorage.getItem('webos_v3_fs')) || {
+        "Bienvenida.txt": { type: "file", content: "Bienvenido a WebinwebOS v3.0\nTodo funciona sin bots." },
+        "Proyectos": { type: "dir", content: {} }
     };
 
-    function saveFS() { localStorage.setItem('webinweb_fs', JSON.stringify(fs)); renderFiles(); }
+    function saveVFS() {
+        localStorage.setItem('webos_v3_fs', JSON.stringify(vfs));
+        renderDesktop();
+        renderExplorer();
+    }
 
-    function renderFiles() {
-        const viewer = document.getElementById('file-viewer');
-        viewer.innerHTML = '';
-        Object.keys(fs).forEach(name => {
+    // Renderizar iconos en el escritorio
+    function renderDesktop() {
+        const desk = document.getElementById('desktop');
+        desk.innerHTML = '';
+        Object.keys(vfs).forEach(name => {
+            const isDir = vfs[name].type === "dir";
             const item = document.createElement('div');
-            item.className = 'file-item';
-            const isDir = fs[name].type === 'dir';
+            item.className = 'desktop-item';
             item.innerHTML = `
-                <svg class="icon-svg" style="fill:${isDir?'#fbbf24':'#94a3b8'}" viewBox="0 0 24 24"><path d="${isDir ? 'M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z' : 'M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6z'}"></path></svg>
-                <div style="font-size:10px; overflow:hidden;">${name}</div>
+                <div class="icon-shape" style="${isDir ? 'background: linear-gradient(135deg, #ffd166, #f78c6c)' : 'background: rgba(255,255,255,0.1)'}">
+                    <svg viewBox="0 0 24 24"><path d="${isDir ? 'M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z' : 'M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6z'}"></path></svg>
+                </div>
+                <div class="item-label">${name}</div>
             `;
-            viewer.appendChild(item);
+            item.onclick = () => {
+                if(!isDir) {
+                    openApp('win-editor');
+                    document.getElementById('editor-text').value = vfs[name].content;
+                }
+            };
+            desk.appendChild(item);
         });
     }
 
-    // --- TERMINAL AVANZADA ---
+    // Renderizar explorador
+    function renderExplorer() {
+        const view = document.getElementById('explorer-view');
+        view.innerHTML = '';
+        Object.keys(vfs).forEach(name => {
+            const item = document.createElement('div');
+            item.className = 'desktop-item';
+            item.innerHTML = `
+                <div class="icon-shape" style="width:40px; height:40px;">
+                    <svg style="width:20px;" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6z"/></svg>
+                </div>
+                <div class="item-label" style="font-size:10px;">${name}</div>
+            `;
+            view.appendChild(item);
+        });
+    }
+
+    // --- TERMINAL ---
     const termIn = document.getElementById('term-in');
     const termOut = document.getElementById('term-out');
 
     termIn.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            const val = termIn.value.trim();
-            const [cmd, ...args] = val.split(' ');
-            processCmd(cmd, args);
+        if(e.key === 'Enter') {
+            const input = termIn.value.trim();
+            const [cmd, ...args] = input.split(' ');
+            let res = `\nwebinweb@local:~$ ${input}\n`;
+
+            if(cmd === 'ls') res += Object.keys(vfs).join('  ');
+            else if(cmd === 'help') res += "Comandos: ls, sysinfo, clear, cat [file], rm [file]";
+            else if(cmd === 'clear') { termOut.innerHTML = ''; termIn.value = ''; return; }
+            else if(cmd === 'sysinfo') {
+                res += `OS: WebinwebOS v3.0\nKernel: Browser-JS\nUI: Crystal Minimalist\nRAM: ${Math.round(performance.memory ? performance.memory.jsHeapSizeLimit/1024/1024 : 4096)}MB`;
+            } else if(cmd === 'cat') {
+                res += vfs[args[0]] ? vfs[args[0]].content : "Archivo no encontrado";
+            } else res += "Comando desconocido.";
+
+            termOut.innerHTML += res;
             termIn.value = '';
+            termOut.parentElement.scrollTop = termOut.parentElement.scrollHeight;
         }
     });
 
-    function processCmd(cmd, args) {
-        let output = `\n$ ${cmd} ${args.join(' ')}\n`;
-        switch(cmd.toLowerCase()) {
-            case 'help': output += "Comandos: ls, mkdir, sysinfo, clear, cat [file], date, rm [file]"; break;
-            case 'ls': output += Object.keys(fs).join('  '); break;
-            case 'sysinfo': 
-                output += `
-  ██╗    ██╗███████╗██████╗ ██╗███╗   ██╗
-  ██║    ██║██╔════╝██╔══██╗██║████╗  ██║  OS: WebinwebOS v2.0
-  ██║ █╗ ██║█████╗  ██████╔╝██║██╔██╗ ██║  Kernel: 2.0.0-JS
-  ██║███╗██║██╔══╝  ██╔══██╗██║██║╚██╗██║  Uptime: ${Math.floor(performance.now()/1000)}s
-  ╚███╔███╔╝███████╗██████╔╝██║██║ ╚████║  Shell: WebBash
-   ╚══╝╚══╝ ╚══════╝╚═════╝ ╚═╝╚═╝  ╚═══╝  Resolution: ${window.innerWidth}x${window.innerHeight}`;
-                break;
-            case 'mkdir':
-                if(args[0]) { fs[args[0]] = {type:'dir', content:{}}; saveFS(); output += `Directorio ${args[0]} creado.`; }
-                break;
-            case 'cat':
-                if(fs[args[0]]) output += fs[args[0]].content;
-                else output += "Archivo no encontrado.";
-                break;
-            case 'clear': termOut.innerHTML = ''; return;
-            default: output += "Comando no reconocido.";
-        }
-        termOut.innerHTML += output;
+    // --- FUNCIONES DE APP ---
+    function openApp(id) { 
+        document.getElementById(id).style.display = 'flex'; 
+        if(id === 'win-files') renderExplorer();
     }
-
-    // --- CHAT CON SOCKET.IO ---
-    // Nota: Necesitas un servidor corriendo para conectar. Aquí está la lógica cliente lista.
-    const socket = io("https://tu-servidor-chat.com", { autoConnect: false }); 
-    
-    function sendMsg() {
-        const msg = document.getElementById('chat-in').value;
-        if(msg) {
-            // socket.emit('chat message', msg); // Descomentar al tener server
-            const chatBox = document.getElementById('chat-messages');
-            chatBox.innerHTML += `<div><b>Tú:</b> ${msg}</div>`;
-            document.getElementById('chat-in').value = '';
-        }
-    }
-
-    // --- LÓGICA GENERAL ---
-    function openApp(id) { document.getElementById(id).style.display = 'flex'; renderFiles(); }
     function closeApp(id) { document.getElementById(id).style.display = 'none'; }
-    function goNav() { document.getElementById('nav-frame').src = document.getElementById('nav-url').value; }
 
-    function saveToVFS() {
-        const name = prompt("Nombre del archivo:");
+    function saveFileVFS() {
+        const name = prompt("Nombre del archivo (ej: nota.txt):");
         if(name) {
-            fs[name] = { type: 'file', content: document.getElementById('editor-area').value };
-            saveFS();
-            alert("Guardado en sistema de archivos local.");
+            vfs[name] = { type: "file", content: document.getElementById('editor-text').value };
+            saveVFS();
+            alert("Guardado en el escritorio.");
         }
     }
 
-    async function exportOS(type) {
-        const text = document.getElementById('editor-area').value;
-        const name = "documento_webos";
-        if(type === 'txt') {
-            download(new Blob([text]), name+".txt");
-        } else if(type === 'pdf') {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            doc.text(text, 10, 10);
-            doc.save(name+".pdf");
-        } else if(type === 'docx') {
-            const doc = new docx.Document({ sections: [{ children: [new docx.Paragraph(text)] }] });
-            docx.Packer.toBlob(doc).then(blob => download(blob, name+".docx"));
-        }
+    function exportReal(type) {
+        const text = document.getElementById('editor-text').value;
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.text(text, 10, 10);
+        doc.save("webos_export.pdf");
     }
 
-    function download(blob, filename) {
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = filename;
-        a.click();
-    }
-
-    // Drag and Drop básico para ventanas
+    // --- ARRASTRE DE VENTANAS ---
     document.querySelectorAll('.window-header').forEach(header => {
-        header.onmousedown = function(e) {
-            let win = header.parentElement;
-            let shiftX = e.clientX - win.getBoundingClientRect().left;
-            let shiftY = e.clientY - win.getBoundingClientRect().top;
-            function moveAt(pageX, pageY) {
-                win.style.left = pageX - shiftX + 'px';
-                win.style.top = pageY - shiftY + 'px';
-            }
-            function onMouseMove(e) { moveAt(e.clientX, e.clientY); }
-            document.addEventListener('mousemove', onMouseMove);
-            document.onmouseup = function() { document.removeEventListener('mousemove', onMouseMove); };
+        header.onmousedown = (e) => {
+            const win = header.parentElement;
+            let x = e.clientX - win.offsetLeft;
+            let y = e.clientY - win.offsetTop;
+            document.onmousemove = (e) => {
+                win.style.left = (e.clientX - x) + 'px';
+                win.style.top = (e.clientY - y) + 'px';
+            };
+            document.onmouseup = () => document.onmousemove = null;
         };
     });
 
-    renderFiles();
+    // Inicializar
+    renderDesktop();
 </script>
 </body>
 </html>
