@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebinwebOS - Desktop</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/docx@7.1.0/build/index.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --taskbar-bg: rgba(30, 41, 59, 0.7);
+            --accent: #38bdf8;
+            --window-bg: rgba(255, 255, 255, 0.95);
+        }
+
+        body, html {
+            margin: 0; padding: 0;
+            height: 100%; overflow: hidden;
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+        }
+
+        /* --- Escritorio --- */
+        #desktop {
+            width: 100vw; height: calc(100vh - 50px);
+            position: relative;
+            background: url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80') center/cover;
+        }
+
+        /* --- Barra de tareas --- */
+        #taskbar {
+            height: 50px; width: 100%;
+            background: var(--taskbar-bg);
+            backdrop-filter: blur(10px);
+            display: flex; align-items: center;
+            padding: 0 10px; box-sizing: border-box;
+            position: fixed; bottom: 0; z-index: 1000;
+        }
+
+        .app-icon {
+            width: 35px; height: 35px;
+            margin: 0 8px; cursor: pointer;
+            transition: transform 0.2s;
+            background: white; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+        }
+
+        .app-icon:hover { transform: scale(1.1); }
+
+        /* --- Ventanas --- */
+        .window {
+            position: absolute; width: 600px; height: 400px;
+            background: var(--window-bg);
+            border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: none; flex-direction: column; overflow: hidden;
+            resize: both; min-width: 300px; min-height: 200px;
+        }
+
+        .window-header {
+            background: #e2e8f0; padding: 10px;
+            display: flex; justify-content: space-between;
+            cursor: move; font-weight: bold;
+        }
+
+        .close-btn { color: red; cursor: pointer; }
+
+        .window-content { flex: 1; padding: 15px; overflow: auto; }
+
+        /* --- Apps específicas --- */
+        #terminal-body { background: #000; color: #00ff00; font-family: monospace; height: 100%; }
+        #editor-text { width: 100%; height: 80%; border: 1px solid #ccc; border-radius: 5px; }
+        iframe { width: 100%; height: 100%; border: none; }
+    </style>
+</head>
+<body>
+
+<div id="desktop">
+    <div id="win-terminal" class="window" style="top: 50px; left: 50px;">
+        <div class="window-header"><span>Terminal Linux</span> <span class="close-btn" onclick="closeApp('win-terminal')">✖</span></div>
+        <div class="window-content" id="terminal-body">
+            <div>WebinwebOS Kernel 1.0.0 (tty1)</div>
+            <div id="terminal-output"></div>
+            <span>$ </span><input type="text" id="terminal-input" style="background:none; border:none; color:#00ff00; outline:none; width:80%;">
+        </div>
+    </div>
+
+    <div id="win-editor" class="window" style="top: 100px; left: 100px;">
+        <div class="window-header"><span>Escritor de Textos</span> <span class="close-btn" onclick="closeApp('win-editor')">✖</span></div>
+        <div class="window-content">
+            <textarea id="editor-text" placeholder="Escribe algo..."></textarea>
+            <div style="margin-top:10px;">
+                <button onclick="exportFile('txt')">TXT</button>
+                <button onclick="exportFile('pdf')">PDF</button>
+                <button onclick="exportFile('docx')">DOCX</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="win-browser" class="window" style="top: 150px; left: 150px; width: 800px; height: 500px;">
+        <div class="window-header"><span>Navegador Webinweb</span> <span class="close-btn" onclick="closeApp('win-browser')">✖</span></div>
+        <div style="padding: 5px; background: #eee; display: flex;">
+            <input type="text" id="browser-url" style="flex:1" value="https://www.bing.com">
+            <button onclick="navigate()">Ir</button>
+        </div>
+        <div class="window-content" style="padding:0;">
+            <iframe id="browser-frame" src="https://www.bing.com/search?q=WebinwebOS"></iframe>
+        </div>
+    </div>
+</div>
+
+<div id="taskbar">
+    <div class="app-icon" title="Terminal" onclick="openApp('win-terminal')">🐚</div>
+    <div class="app-icon" title="Editor" onclick="openApp('win-editor')">📝</div>
+    <div class="app-icon" title="Navegador" onclick="openApp('win-browser')">🌐</div>
+    <div class="app-icon" title="Chat" onclick="alert('Conectando al servidor de chat...')">💬</div>
+</div>
+
+<script>
+    // Lógica de Ventanas
+    function openApp(id) { document.getElementById(id).style.display = 'flex'; }
+    function closeApp(id) { document.getElementById(id).style.display = 'none'; }
+
+    // Simulación de Terminal
+    const termInput = document.getElementById('terminal-input');
+    const termOutput = document.getElementById('terminal-output');
+    
+    termInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const cmd = termInput.value.toLowerCase();
+            let response = "";
+            if(cmd === 'ls') response = "documentos/  imagenes/  sistema/";
+            else if(cmd === 'whoami') response = "usuario_webinweb";
+            else if(cmd === 'help') response = "Comandos: ls, whoami, clear, help, date";
+            else if(cmd === 'date') response = new Date().toString();
+            else if(cmd === 'clear') { termOutput.innerHTML = ""; termInput.value = ""; return; }
+            else response = `Comando no encontrado: ${cmd}`;
+            
+            termOutput.innerHTML += `<div>$ ${cmd}</div><div>${response}</div>`;
+            termInput.value = "";
+        }
+    });
+
+    // Navegador
+    function navigate() {
+        const url = document.getElementById('browser-url').value;
+        document.getElementById('browser-frame').src = url;
+    }
+
+    // Exportador de Archivos
+    async function exportFile(type) {
+        const text = document.getElementById('editor-text').value;
+        if (type === 'txt') {
+            const blob = new Blob([text], {type: "text/plain"});
+            saveAs(blob, "archivo.txt");
+        } else if (type === 'pdf') {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.text(text, 10, 10);
+            doc.save("archivo.pdf");
+        } else if (type === 'docx') {
+            const doc = new docx.Document({
+                sections: [{ children: [new docx.Paragraph(text)] }]
+            });
+            docx.Packer.toBlob(doc).then(blob => saveAs(blob, "archivo.docx"));
+        }
+    }
+
+    function saveAs(blob, name) {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = name;
+        a.click();
+    }
+</script>
+
+</body>
+</html>
